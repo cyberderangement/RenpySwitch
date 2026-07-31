@@ -1,4 +1,4 @@
-name: GitHub Actions Demo
+name: Build Renpy for Switch
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 
