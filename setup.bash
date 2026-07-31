@@ -7,24 +7,26 @@ export PYGAME_SDL2_VER=2.1.0
 apt-get -y update
 apt-get -y upgrade
 
-# Add Focal repository to install Python 2.7 on modern Ubuntu releases (22.04 / 24.04)
-if ! command -v python2 >/dev/null 2>&1; then
-  echo "deb http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list.d/focal.list
-  apt-get -y update || true
-fi
-
 apt-get -y install build-essential checkinstall
 apt-get -y install libncurses-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
 
-apt-get -y install python2 python2-dev libpython2.7-dev || apt-get -y install python2.7 python2.7-dev || true
+if ! command -v python2 >/dev/null 2>&1 && ! command -v python2.7 >/dev/null 2>&1; then
+  echo "Downloading Python 2.7 packages directly..."
+  mkdir -p /tmp/py27_deb && pushd /tmp/py27_deb
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-minimal_2.7.18-1~20.04.5_amd64.deb || true
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7-minimal_2.7.18-1~20.04.5_amd64.deb || true
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-stdlib_2.7.18-1~20.04.5_amd64.deb || true
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7_2.7.18-1~20.04.5_amd64.deb || true
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-dev_2.7.18-1~20.04.5_amd64.deb || true
+  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7-dev_2.7.18-1~20.04.5_amd64.deb || true
+  dpkg -i --force-depends *.deb || true
+  popd && rm -rf /tmp/py27_deb
+  apt-get -y -f install || true
+fi
 
 if ! command -v python2 >/dev/null 2>&1; then
   if command -v python2.7 >/dev/null 2>&1; then
     ln -sf $(which python2.7) /usr/local/bin/python2
-  else
-    echo "Installing standalone Python 2.7 build..."
-    curl -L https://github.com/astral-sh/python-build-standalone/releases/download/20200823/cpython-2.7.18-x86_64-unknown-linux-gnu-install-only-20200823T2236.tar.gz | tar -xz -C /usr/local --strip-components=1
-    ln -sf /usr/local/bin/python2.7 /usr/local/bin/python2
   fi
 fi
 
