@@ -7,27 +7,20 @@ export PYGAME_SDL2_VER=2.1.0
 apt-get -y update
 apt-get -y upgrade
 
-apt-get -y install build-essential checkinstall
-apt-get -y install libncurses-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev
-
-if ! command -v python2 >/dev/null 2>&1 && ! command -v python2.7 >/dev/null 2>&1; then
-  echo "Downloading Python 2.7 packages directly..."
-  mkdir -p /tmp/py27_deb && pushd /tmp/py27_deb
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-minimal_2.7.18-1~20.04.5_amd64.deb || true
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7-minimal_2.7.18-1~20.04.5_amd64.deb || true
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-stdlib_2.7.18-1~20.04.5_amd64.deb || true
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7_2.7.18-1~20.04.5_amd64.deb || true
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/libpython2.7-dev_2.7.18-1~20.04.5_amd64.deb || true
-  curl -sLO http://security.ubuntu.com/ubuntu/pool/universe/p/python2.7/python2.7-dev_2.7.18-1~20.04.5_amd64.deb || true
-  dpkg -i --force-depends *.deb || true
-  popd && rm -rf /tmp/py27_deb
-  apt-get -y -f install || true
-fi
+apt-get -y install build-essential checkinstall wget
+apt-get -y install libncurses-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev zlib1g-dev libreadline-dev libffi-dev
 
 if ! command -v python2 >/dev/null 2>&1; then
-  if command -v python2.7 >/dev/null 2>&1; then
-    ln -sf $(which python2.7) /usr/local/bin/python2
-  fi
+  echo "Building Python 2.7.18 from source..."
+  wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tar.xz
+  tar -xf Python-2.7.18.tar.xz
+  pushd Python-2.7.18
+  ./configure --enable-shared --prefix=/usr
+  make -j$(nproc)
+  make install
+  popd
+  rm -rf Python-2.7.18 Python-2.7.18.tar.xz
+  ldconfig
 fi
 
 python2 --version
