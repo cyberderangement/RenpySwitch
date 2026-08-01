@@ -1,17 +1,55 @@
 diff -Naur b/module/ffmedia.c a/module/ffmedia.c
 --- b/module/ffmedia.c	2023-06-01 05:43:51.000000000 +0300
 +++ a/module/ffmedia.c	2023-08-02 03:17:51.825550300 +0300
-@@ -10,10 +10,6 @@
- 
+@@ -10,10 +10,48 @@
+
  #include <stdlib.h>
- 
+
 -#ifndef _WIN32
 -#define USE_POSIX_MEMALIGN
 -#endif
 -
++#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)
++#define renpy_channel_layout(frame) ((frame)->ch_layout.u.mask)
++#define renpy_channels(frame) ((frame)->ch_layout.nb_channels)
++#define av_get_default_channel_layout(c) (av_channel_layout_default(&mask, (c)), mask.u.mask)
++static inline int renpy_swr_alloc_set_opts(struct SwrContext **ps, uint64_t out_ch_layout, enum AVSampleFormat out_sample_fmt, int out_sample_rate, uint64_t in_ch_layout, enum AVSampleFormat in_sample_fmt, int in_sample_rate, int log_offset, void *log_ctx) {
++    AVChannelLayout out_layout, in_layout;
++    av_channel_layout_from_mask(&out_layout, out_ch_layout);
++    av_channel_layout_from_mask(&in_layout, in_ch_layout);
++    return swr_alloc_set_opts2(ps, &out_layout, out_sample_fmt, out_sample_rate, &in_layout, in_sample_fmt, in_sample_rate, log_offset, log_ctx);
++}
++#define swr_alloc_set_opts(out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx) \
++    (ms->swr_ctx = NULL, renpy_swr_alloc_set_opts(&ms->swr_ctx, out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx), ms->swr_ctx)
++#else
++#define renpy_channel_layout(frame) ((frame)->channel_layout)
++#define renpy_channels(frame) ((frame)->channels)
++#endif
+
  /* Should a mono channel be split into two equal stero channels (true) or
   * should the energy be split onto two stereo channels with 1/2 the energy
   * (false).
+@@ -65,7 +103,11 @@
+-static int rwops_write(void *opaque, uint8_t *buf, int buf_size) {
++static int rwops_write(void *opaque, const uint8_t *buf, int buf_size) {
+@@ -680,15 +722,16 @@
+-            converted_frame->channel_layout = AV_CH_LAYOUT_STEREO;
++            converted_frame->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
++            AVChannelLayout mask;
+                         if (!renpy_channel_layout(ms->audio_decode_frame)) {
+-                                ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);
++                                ms->audio_decode_frame->ch_layout.u.mask = av_get_default_channel_layout(renpy_channels(ms->audio_decode_frame));
+                         }
+-                                if (audio_equal_mono && (ms->audio_decode_frame->channels == 1)) {
++                                if (audio_equal_mono && (renpy_channels(ms->audio_decode_frame) == 1)) {
+                                     ms->swr_ctx = swr_alloc_set_opts(
+                                                         ms->swr_ctx,
+-                        converted_frame->channel_layout,
++                        renpy_channel_layout(converted_frame),
+                                                         ms->audio_format,
+                                                         ms->audio_rate,
+-                        ms->audio_decode_frame->channel_layout,
++                        renpy_channel_layout(ms->audio_decode_frame),
 @@ -289,11 +285,7 @@
  		}
  
