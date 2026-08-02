@@ -238,7 +238,7 @@ void userAppInit()
         if (count > 1) {
             pselShowUserSelector(&userID, &settings);
         } else {
-            size_t loadedUsers;
+            s32 loadedUsers = 0;
             AccountUid account_ids[count];
             accountListAllUsers(account_ids, count, &loadedUsers);
             userID = account_ids[0];
