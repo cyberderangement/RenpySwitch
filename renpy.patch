@@ -1,7 +1,7 @@
 diff -Naur b/module/ffmedia.c a/module/ffmedia.c
 --- b/module/ffmedia.c	2023-06-01 05:43:51.000000000 +0300
 +++ a/module/ffmedia.c	2023-08-02 03:17:51.825550300 +0300
-@@ -10,10 +10,6 @@
+@@ -10,8 +10,4 @@
 
  #include <stdlib.h>
 
@@ -9,6 +9,9 @@ diff -Naur b/module/ffmedia.c a/module/ffmedia.c
 -#define USE_POSIX_MEMALIGN
 -#endif
 -
+ /* Should a mono channel be split into two equal stero channels (true) or
+  * should the energy be split onto two stereo channels with 1/2 the energy
+  * (false).
 @@ -289,11 +285,7 @@
  		}
  
