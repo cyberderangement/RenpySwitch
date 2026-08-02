@@ -88,30 +88,30 @@ cat << 'EOF' > fix_ffmedia.py
 with open('module/ffmedia.c', 'r') as f:
     code = f.read()
 
-# Only apply on devkitpro switch cross-compilation target where FFmpeg >= 5.0 is installed
 header_fix = '''#include <stdlib.h>
 
 #if defined(__SWITCH__) && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)
 #define renpy_channel_layout(frame) ((frame)->ch_layout.u.mask)
 #define renpy_channels(frame) ((frame)->ch_layout.nb_channels)
 #define av_get_default_channel_layout(c) (av_channel_layout_default(&mask, (c)), mask.u.mask)
-static inline int renpy_swr_alloc_set_opts(struct SwrContext **ps, uint64_t out_ch_layout, enum AVSampleFormat out_sample_fmt, int out_sample_rate, uint64_t in_ch_layout, enum AVSampleFormat in_sample_fmt, int in_sample_rate, int log_offset, void *log_ctx) {
+static inline int renpy_swr_alloc_set_opts_func(struct SwrContext **ps, uint64_t out_ch_layout, enum AVSampleFormat out_sample_fmt, int out_sample_rate, uint64_t in_ch_layout, enum AVSampleFormat in_sample_fmt, int in_sample_rate, int log_offset, void *log_ctx) {
     AVChannelLayout out_layout, in_layout;
     av_channel_layout_from_mask(&out_layout, out_ch_layout);
     av_channel_layout_from_mask(&in_layout, in_ch_layout);
     return swr_alloc_set_opts2(ps, &out_layout, out_sample_fmt, out_sample_rate, &in_layout, in_sample_fmt, in_sample_rate, log_offset, log_ctx);
 }
-#define renpy_swr_alloc(out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx) \
-    (ms->swr_ctx = NULL, renpy_swr_alloc_set_opts(&ms->swr_ctx, out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx), ms->swr_ctx)
+#define renpy_swr_alloc_set_opts(s, out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx) \
+    (ms->swr_ctx = (s), renpy_swr_alloc_set_opts_func(&ms->swr_ctx, out_ch_layout, out_fmt, out_rate, in_ch_layout, in_fmt, in_rate, log_off, log_ctx), ms->swr_ctx)
 #else
 #define renpy_channel_layout(frame) ((frame)->channel_layout)
 #define renpy_channels(frame) ((frame)->channels)
-#define renpy_swr_alloc swr_alloc_set_opts
+#define renpy_swr_alloc_set_opts swr_alloc_set_opts
 #endif
 '''
 
 code = code.replace('#include <stdlib.h>', header_fix, 1)
-code = code.replace('swr_alloc_set_opts(', 'renpy_swr_alloc(')
+code = code.replace('static int rwops_write(void *opaque, uint8_t *buf, int buf_size)', '#if defined(__SWITCH__) && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)\nstatic int rwops_write(void *opaque, const uint8_t *buf, int buf_size) {\n#else\nstatic int rwops_write(void *opaque, uint8_t *buf, int buf_size) {\n#endif')
+code = code.replace('swr_alloc_set_opts(', 'renpy_swr_alloc_set_opts(')
 code = code.replace('converted_frame->channel_layout = AV_CH_LAYOUT_STEREO;', '#if defined(__SWITCH__) && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)\n            converted_frame->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;\n            AVChannelLayout mask;\n#else\n            converted_frame->channel_layout = AV_CH_LAYOUT_STEREO;\n#endif')
 code = code.replace('ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);', '#if defined(__SWITCH__) && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)\n                                ms->audio_decode_frame->ch_layout.u.mask = av_get_default_channel_layout(renpy_channels(ms->audio_decode_frame));\n#else\n                                ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);\n#endif')
 code = code.replace('if (audio_equal_mono && (ms->audio_decode_frame->channels == 1)) {', 'if (audio_equal_mono && (renpy_channels(ms->audio_decode_frame) == 1)) {')
