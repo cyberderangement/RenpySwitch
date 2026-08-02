@@ -125,21 +125,15 @@ new_stereo = '''#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)
 #endif'''
 code = code.replace(old_stereo, new_stereo)
 
-old_layout_init = '''if (!ms->audio_decode_frame->channel_layout) {
-                                ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);
-                        }'''
+old_layout_init = 'ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);'
 new_layout_init = '''#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100)
-                        if (!ms->audio_decode_frame->ch_layout.u.mask) {
-                            AVChannelLayout mask_tmp;
-                            av_channel_layout_default(&mask_tmp, ms->audio_decode_frame->ch_layout.nb_channels);
-                            ms->audio_decode_frame->ch_layout = mask_tmp;
-                        }
+                                av_channel_layout_default(&ms->audio_decode_frame->ch_layout, ms->audio_decode_frame->ch_layout.nb_channels);
 #else
-                        if (!ms->audio_decode_frame->channel_layout) {
                                 ms->audio_decode_frame->channel_layout = av_get_default_channel_layout(ms->audio_decode_frame->channels);
-                        }
 #endif'''
 code = code.replace(old_layout_init, new_layout_init)
+
+code = code.replace('!ms->audio_decode_frame->channel_layout', '!renpy_get_channel_layout(ms->audio_decode_frame)')
 
 code = code.replace('ms->audio_decode_frame->channels == 1', 'renpy_get_channels(ms->audio_decode_frame) == 1')
 code = code.replace('converted_frame->channel_layout,', 'renpy_get_channel_layout(converted_frame),')
